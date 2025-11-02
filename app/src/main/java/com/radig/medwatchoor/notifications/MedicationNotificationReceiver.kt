@@ -162,9 +162,20 @@ class MedicationNotificationReceiver : BroadcastReceiver() {
     }
 
     private fun rescheduleMedication(context: Context, medicationId: Int) {
-        // Reschedule will happen automatically when the app next loads medications
-        // Or we could trigger a WorkManager task here to reschedule
-        Log.d("MedicationNotification", "Medication $medicationId will be rescheduled on next app start")
+        try {
+            val database = com.radig.medwatchoor.data.MedicationDatabase.getDatabase(context)
+            kotlinx.coroutines.runBlocking {
+                val medications = database.medicationDao().getAllMedications()
+                val medication = medications.find { it.id == medicationId }
+                medication?.let {
+                    val scheduler = MedicationScheduler(context)
+                    scheduler.scheduleAllMedications(listOf(it))
+                    Log.d("MedicationNotification", "Rescheduled medication $medicationId for next occurrence")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MedicationNotification", "Error rescheduling medication", e)
+        }
     }
 
     companion object {

@@ -3,7 +3,9 @@ package com.radig.medwatchoor.data
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.util.Calendar
 
 /**
  * Repository for managing medication data
@@ -20,9 +22,35 @@ class MedicationRepository(
     /**
      * Get medications as a Flow for reactive UI updates
      * Always returns from local database (offline-first)
+     * Filters medications based on weekday restrictions
      */
     fun getMedicationsFlow(): Flow<List<Medication>> {
-        return medicationDao.getAllMedicationsFlow()
+        return medicationDao.getAllMedicationsFlow().map { medications ->
+            medications.filter { medication ->
+                shouldShowMedicationToday(medication)
+            }
+        }
+    }
+
+    /**
+     * Check if a medication should be shown today based on weekday restrictions
+     * @param medication The medication to check
+     * @return true if medication should be shown today (null weekdays = every day)
+     */
+    private fun shouldShowMedicationToday(medication: Medication): Boolean {
+        // If weekdays is null or empty, show every day
+        if (medication.weekdays.isNullOrEmpty()) {
+            return true
+        }
+
+        // Get current day of week (1 = Monday, 7 = Sunday)
+        val calendar = Calendar.getInstance()
+        val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+
+        // Convert Calendar's Sunday=1 to our Monday=1 format
+        val currentDay = if (dayOfWeek == Calendar.SUNDAY) 7 else dayOfWeek - 1
+
+        return medication.weekdays.contains(currentDay)
     }
 
     /**

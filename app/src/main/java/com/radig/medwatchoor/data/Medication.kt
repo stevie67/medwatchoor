@@ -23,6 +23,9 @@ data class Medication(
     @SerializedName("notes")
     val notes: String? = null,
 
+    @SerializedName("weekdays")
+    val weekdays: List<Int>? = null, // Days 1-7 (Mon-Sun), null means every day
+
     // Track if medication has been taken today
     val isTaken: Boolean = false,
 

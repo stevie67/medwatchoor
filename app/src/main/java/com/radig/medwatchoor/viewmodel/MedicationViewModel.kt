@@ -109,8 +109,9 @@ class MedicationViewModel(
         viewModelScope.launch {
             repository.refreshMedications(forceRefresh).fold(
                 onSuccess = { medications ->
-                    // Data is automatically updated via Flow, but we can update state immediately
-                    _uiState.value = MedicationUiState.Success(medications)
+                    // Data is automatically updated via Flow (which includes weekday filtering)
+                    // Don't override state here - let the Flow observer handle it
+                    android.util.Log.d("MedicationViewModel", "Loaded ${medications.size} medications from server")
                 },
                 onFailure = { exception ->
                     // Only show error if we have no data at all

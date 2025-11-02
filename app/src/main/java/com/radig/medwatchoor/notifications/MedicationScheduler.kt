@@ -30,6 +30,7 @@ class MedicationScheduler(private val context: Context) {
 
     /**
      * Schedules a notification for a single medication
+     * Respects weekday restrictions
      */
     private fun scheduleMedication(medication: Medication) {
         val (hour, minute) = parseTime(medication.timeToTake)
@@ -43,6 +44,28 @@ class MedicationScheduler(private val context: Context) {
             // If the time has already passed today, schedule for tomorrow
             if (timeInMillis <= System.currentTimeMillis()) {
                 add(Calendar.DAY_OF_YEAR, 1)
+            }
+
+            // If medication has weekday restrictions, find next valid day
+            if (!medication.weekdays.isNullOrEmpty()) {
+                var daysChecked = 0
+                while (daysChecked < 7) {
+                    val dayOfWeek = get(Calendar.DAY_OF_WEEK)
+                    val currentDay = if (dayOfWeek == Calendar.SUNDAY) 7 else dayOfWeek - 1
+
+                    if (medication.weekdays.contains(currentDay)) {
+                        break // Found a valid day
+                    }
+
+                    // Move to next day
+                    add(Calendar.DAY_OF_YEAR, 1)
+                    daysChecked++
+                }
+
+                if (daysChecked >= 7) {
+                    Log.e("MedicationScheduler", "No valid weekday found for ${medication.name}")
+                    return
+                }
             }
         }
 
