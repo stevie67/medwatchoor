@@ -26,10 +26,29 @@ class MedicationNotificationReceiver : BroadcastReceiver() {
         Log.d("MedicationNotification", "Received alarm for $medicationName at $medicationTime")
 
         if (medicationId != -1) {
-            showNotification(context, medicationId, medicationName, medicationTime)
+            // Check if medication has already been taken
+            if (!isMedicationTaken(context, medicationId)) {
+                showNotification(context, medicationId, medicationName, medicationTime)
+            } else {
+                Log.d("MedicationNotification", "Medication $medicationName already taken - skipping notification")
+            }
 
             // Reschedule for tomorrow
             rescheduleMedication(context, medicationId)
+        }
+    }
+
+    private fun isMedicationTaken(context: Context, medicationId: Int): Boolean {
+        return try {
+            val database = com.radig.medwatchoor.data.MedicationDatabase.getDatabase(context)
+            val medications = kotlinx.coroutines.runBlocking {
+                database.medicationDao().getAllMedications()
+            }
+            val medication = medications.find { it.id == medicationId }
+            medication?.isTaken == true
+        } catch (e: Exception) {
+            Log.e("MedicationNotification", "Error checking medication status", e)
+            false // If error, show notification to be safe
         }
     }
 
