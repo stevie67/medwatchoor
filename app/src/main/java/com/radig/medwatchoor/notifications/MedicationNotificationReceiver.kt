@@ -35,6 +35,11 @@ class MedicationNotificationReceiver : BroadcastReceiver() {
                     Log.d("MedicationNotification", "Marked $medicationName as taken from notification")
                 }
             }
+            "android.intent.action.BOOT_COMPLETED" -> {
+                // Device rebooted - reschedule all medication alarms
+                Log.d("MedicationNotification", "Device booted - rescheduling all medications")
+                rescheduleAllMedications(context)
+            }
             else -> {
                 // Regular alarm trigger
                 Log.d("MedicationNotification", "Received alarm for $medicationName at $medicationTime")
@@ -175,6 +180,20 @@ class MedicationNotificationReceiver : BroadcastReceiver() {
             }
         } catch (e: Exception) {
             Log.e("MedicationNotification", "Error rescheduling medication", e)
+        }
+    }
+
+    private fun rescheduleAllMedications(context: Context) {
+        try {
+            val database = com.radig.medwatchoor.data.MedicationDatabase.getDatabase(context)
+            kotlinx.coroutines.runBlocking {
+                val medications = database.medicationDao().getAllMedications()
+                val scheduler = MedicationScheduler(context)
+                scheduler.scheduleAllMedications(medications)
+                Log.d("MedicationNotification", "Rescheduled ${medications.size} medications after boot")
+            }
+        } catch (e: Exception) {
+            Log.e("MedicationNotification", "Error rescheduling all medications", e)
         }
     }
 
