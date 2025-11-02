@@ -1,0 +1,54 @@
+# Built application files
+*.apk
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+build/
+
+# Gradle files
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Android Studio
+*.iml
+.idea/
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+
+# NDK
+obj/
+
+# Keystore files
+*.jks
+*.keystore
+keystore.properties
+
+# Secrets
+*secrets*
+
+# Personal workout data
+stevie.json
+server/stevie.json
+server/*.backup-*
+
+# Keep these files local - they contain your personal credentials:
+# - keystore.properties (signing credentials)
+# - app/src/main/java/com/radig/gymoor/data/ExerciseApiService.kt (has modified token)
+# - server/upload.php (has modified token)

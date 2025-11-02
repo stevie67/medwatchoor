@@ -1,0 +1,6 @@
+# Gymoor Server Configuration
+# This file ensures the Authorization header is passed to PHP scripts
+
+RewriteEngine On
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

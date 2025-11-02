@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MedWatchoor</string>
+    <string name="medication_list_title">Medications</string>
+    <string name="loading">Loading…</string>
+    <string name="error_loading">Error loading medications</string>
+    <string name="retry">Retry</string>
+    <string name="confirm_taken">Confirm</string>
+    <string name="taken">Taken</string>
+</resources>
