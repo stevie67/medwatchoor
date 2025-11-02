@@ -118,7 +118,7 @@ class MedicationNotificationReceiver : BroadcastReceiver() {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_medication)
             .setContentTitle("Time for $medicationName")
             .setContentText("Tap to mark as taken")
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -126,7 +126,7 @@ class MedicationNotificationReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
             .setContentIntent(openAppPendingIntent)
             .addAction(
-                R.drawable.ic_launcher_foreground,
+                R.drawable.ic_medication,
                 "Taken",
                 takenPendingIntent
             )

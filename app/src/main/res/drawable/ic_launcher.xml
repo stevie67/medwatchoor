@@ -4,12 +4,15 @@
     android:height="48dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
+    <!-- Background -->
     <path
-        android:fillColor="#3DDC84"
+        android:fillColor="#FF5722"
         android:pathData="M0,0h48v48h-48z" />
+    <!-- Pill capsule icon - scaled for 48dp -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M24,8 L24,40 M16,16 L32,16 M16,24 L32,24 M16,32 L32,32"
-        android:strokeWidth="2"
-        android:strokeColor="#FFFFFF"/>
+        android:pathData="M14,23l12.7,-12.7c3.9,-3.9 10.2,-3.9 14.1,0c3.9,3.9 3.9,10.2 0,14.1L28.1,37.1c-3.9,3.9 -10.2,3.9 -14.1,0C10.1,33.2 10.1,26.9 14,23zM16.7,25.7c-2.3,2.3 -2.3,6.1 0,8.5c2.3,2.3 6.1,2.3 8.5,0L37.8,21.5c2.3,-2.3 2.3,-6.1 0,-8.5c-2.3,-2.3 -6.1,-2.3 -8.5,0L16.7,25.7z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M23,14l7.8,7.8L18,34.5L10.2,26.7L23,14z"/>
 </vector>
