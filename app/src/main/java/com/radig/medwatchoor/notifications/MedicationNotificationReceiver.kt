@@ -19,22 +19,51 @@ import com.radig.medwatchoor.R
 class MedicationNotificationReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        val action = intent.action
         val medicationId = intent.getIntExtra("MEDICATION_ID", -1)
         val medicationName = intent.getStringExtra("MEDICATION_NAME") ?: "Medication"
         val medicationTime = intent.getStringExtra("MEDICATION_TIME") ?: ""
 
-        Log.d("MedicationNotification", "Received alarm for $medicationName at $medicationTime")
-
-        if (medicationId != -1) {
-            // Check if medication has already been taken
-            if (!isMedicationTaken(context, medicationId)) {
-                showNotification(context, medicationId, medicationName, medicationTime)
-            } else {
-                Log.d("MedicationNotification", "Medication $medicationName already taken - skipping notification")
+        when (action) {
+            ACTION_MARK_TAKEN -> {
+                // User tapped "Taken" action button on notification
+                if (medicationId != -1) {
+                    markMedicationAsTaken(context, medicationId)
+                    // Dismiss the notification
+                    val notificationManager = NotificationManagerCompat.from(context)
+                    notificationManager.cancel(medicationId)
+                    Log.d("MedicationNotification", "Marked $medicationName as taken from notification")
+                }
             }
+            else -> {
+                // Regular alarm trigger
+                Log.d("MedicationNotification", "Received alarm for $medicationName at $medicationTime")
 
-            // Reschedule for tomorrow
-            rescheduleMedication(context, medicationId)
+                if (medicationId != -1) {
+                    // Check if medication has already been taken
+                    if (!isMedicationTaken(context, medicationId)) {
+                        showNotification(context, medicationId, medicationName, medicationTime)
+                    } else {
+                        Log.d("MedicationNotification", "Medication $medicationName already taken - skipping notification")
+                    }
+
+                    // Reschedule for tomorrow
+                    rescheduleMedication(context, medicationId)
+                }
+            }
+        }
+    }
+
+    private fun markMedicationAsTaken(context: Context, medicationId: Int) {
+        try {
+            val database = com.radig.medwatchoor.data.MedicationDatabase.getDatabase(context)
+            kotlinx.coroutines.runBlocking {
+                val timestamp = System.currentTimeMillis()
+                database.medicationDao().markAsTaken(medicationId, timestamp)
+                Log.d("MedicationNotification", "Medication $medicationId marked as taken")
+            }
+        } catch (e: Exception) {
+            Log.e("MedicationNotification", "Error marking medication as taken", e)
         }
     }
 
@@ -65,24 +94,42 @@ class MedicationNotificationReceiver : BroadcastReceiver() {
         vibrator.vibrate(longArrayOf(0, 500, 200, 500, 200, 500), -1)
 
         // Intent to open the app when notification is tapped
-        val intent = Intent(context, MainActivity::class.java).apply {
+        val openAppIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
-        val pendingIntent = PendingIntent.getActivity(
+        val openAppPendingIntent = PendingIntent.getActivity(
             context,
             medicationId,
-            intent,
+            openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Intent for "Taken" action button
+        val takenIntent = Intent(context, MedicationNotificationReceiver::class.java).apply {
+            action = ACTION_MARK_TAKEN
+            putExtra("MEDICATION_ID", medicationId)
+            putExtra("MEDICATION_NAME", medicationName)
+        }
+        val takenPendingIntent = PendingIntent.getBroadcast(
+            context,
+            medicationId + 10000, // Different request code
+            takenIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Time for $medicationName")
-            .setContentText("Scheduled for $medicationTime")
+            .setContentText("Tap to mark as taken")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
+            .setContentIntent(openAppPendingIntent)
+            .addAction(
+                R.drawable.ic_launcher_foreground,
+                "Taken",
+                takenPendingIntent
+            )
             .setVibrate(longArrayOf(0, 500, 200, 500, 200, 500))
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setOngoing(false)
@@ -122,5 +169,6 @@ class MedicationNotificationReceiver : BroadcastReceiver() {
 
     companion object {
         private const val CHANNEL_ID = "medication_reminders"
+        private const val ACTION_MARK_TAKEN = "com.radig.medwatchoor.ACTION_MARK_TAKEN"
     }
 }
