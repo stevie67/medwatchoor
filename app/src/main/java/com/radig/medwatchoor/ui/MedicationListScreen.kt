@@ -1,5 +1,7 @@
 package com.radig.medwatchoor.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -62,6 +64,9 @@ fun MedicationListScreen(
                 listState = listState,
                 onMedicationTaken = { medicationId ->
                     viewModel.markMedicationAsTaken(medicationId)
+                },
+                onMedicationReset = { medicationId ->
+                    viewModel.resetMedicationTaken(medicationId)
                 }
             )
             is MedicationUiState.Error -> ErrorScreen(
@@ -117,6 +122,7 @@ private fun MedicationList(
     medications: List<Medication>,
     listState: ScalingLazyListState,
     onMedicationTaken: (Int) -> Unit,
+    onMedicationReset: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -138,34 +144,46 @@ private fun MedicationList(
             items(medications) { medication ->
                 MedicationItem(
                     medication = medication,
-                    onMedicationTaken = onMedicationTaken
+                    onMedicationTaken = onMedicationTaken,
+                    onMedicationReset = onMedicationReset
                 )
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MedicationItem(
     medication: Medication,
-    onMedicationTaken: (Int) -> Unit
+    onMedicationTaken: (Int) -> Unit,
+    onMedicationReset: (Int) -> Unit
 ) {
     val isTaken = medication.isTaken
     val textColor = if (isTaken) Color.Gray else Color.White
 
     Card(
-        onClick = {
-            if (!isTaken) {
-                onMedicationTaken(medication.id)
-            }
-        },
+        onClick = { /* Handled by combinedClickable */ },
         modifier = Modifier.fillMaxWidth(),
-        enabled = !isTaken
+        enabled = true
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp)
+                .combinedClickable(
+                    onClick = {
+                        if (!isTaken) {
+                            onMedicationTaken(medication.id)
+                        }
+                    },
+                    onLongClick = {
+                        // Long press to reset (for testing)
+                        if (isTaken) {
+                            onMedicationReset(medication.id)
+                        }
+                    }
+                )
         ) {
             // Medication name
             Text(

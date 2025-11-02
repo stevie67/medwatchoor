@@ -102,6 +102,52 @@ class MedicationRepository(
     }
 
     /**
+     * Resets a medication's taken status (for testing)
+     */
+    suspend fun resetMedicationTaken(medicationId: Int) {
+        withContext(Dispatchers.IO) {
+            val medications = medicationDao.getAllMedications()
+            val medication = medications.find { it.id == medicationId }
+            medication?.let {
+                medicationDao.update(it.copy(isTaken = false, lastTakenTimestamp = 0))
+                android.util.Log.d("MedicationRepository", "Reset medication $medicationId taken status")
+            }
+        }
+    }
+
+    /**
+     * Resets the taken status for medications that were taken on a previous day
+     * Should be called on app start to handle day changes
+     */
+    suspend fun resetStaleStatuses() {
+        withContext(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            val medications = medicationDao.getAllMedications()
+
+            medications.forEach { medication ->
+                if (medication.isTaken && medication.lastTakenTimestamp > 0) {
+                    // Check if the medication was taken on a different day
+                    if (!isSameDay(medication.lastTakenTimestamp, now)) {
+                        android.util.Log.d("MedicationRepository", "Resetting medication ${medication.id} - taken on previous day")
+                        medicationDao.update(medication.copy(isTaken = false, lastTakenTimestamp = 0))
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks if two timestamps are on the same calendar day
+     */
+    private fun isSameDay(timestamp1: Long, timestamp2: Long): Boolean {
+        val cal1 = java.util.Calendar.getInstance().apply { timeInMillis = timestamp1 }
+        val cal2 = java.util.Calendar.getInstance().apply { timeInMillis = timestamp2 }
+
+        return cal1.get(java.util.Calendar.YEAR) == cal2.get(java.util.Calendar.YEAR) &&
+               cal1.get(java.util.Calendar.DAY_OF_YEAR) == cal2.get(java.util.Calendar.DAY_OF_YEAR)
+    }
+
+    /**
      * Uploads all dirty (modified) medications to the server
      * Clears dirty flags on successful upload
      */

@@ -4,14 +4,20 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.radig.medwatchoor.data.Medication
 import com.radig.medwatchoor.data.MedicationRepository
+import com.radig.medwatchoor.notifications.MedicationCheckWorker
+import com.radig.medwatchoor.notifications.MedicationScheduler
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
 /**
  * UI state for the medication list screen
@@ -27,7 +33,8 @@ sealed class MedicationUiState {
  * Implements offline-first with automatic sync
  */
 class MedicationViewModel(
-    private val repository: MedicationRepository
+    private val repository: MedicationRepository,
+    private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MedicationUiState>(MedicationUiState.Loading)
@@ -35,13 +42,21 @@ class MedicationViewModel(
 
     private var syncJob: Job? = null
     private val syncDelayMs = 3000L // Wait 3 seconds after last change before syncing
+    private val medicationScheduler = MedicationScheduler(context)
 
     init {
+        // Reset any medications that were taken on previous days
+        viewModelScope.launch {
+            repository.resetStaleStatuses()
+        }
+
         // Observe medications from local database (offline-first)
         viewModelScope.launch {
             repository.getMedicationsFlow().collect { medications ->
                 if (medications.isNotEmpty()) {
                     _uiState.value = MedicationUiState.Success(medications)
+                    // Schedule notifications for all medications
+                    scheduleMedicationNotifications(medications)
                 }
             }
         }
@@ -51,6 +66,39 @@ class MedicationViewModel(
 
         // Monitor network connectivity and auto-sync when online
         observeNetworkAndSync()
+
+        // Setup periodic worker for midnight reset
+        setupPeriodicWorker()
+    }
+
+    /**
+     * Schedules notifications for all medications
+     */
+    private fun scheduleMedicationNotifications(medications: List<Medication>) {
+        viewModelScope.launch {
+            try {
+                medicationScheduler.scheduleAllMedications(medications)
+                android.util.Log.d("MedicationViewModel", "Scheduled notifications for ${medications.size} medications")
+            } catch (e: Exception) {
+                android.util.Log.e("MedicationViewModel", "Failed to schedule notifications", e)
+            }
+        }
+    }
+
+    /**
+     * Sets up periodic worker to check midnight transition and reset statuses
+     */
+    private fun setupPeriodicWorker() {
+        val workRequest = PeriodicWorkRequestBuilder<MedicationCheckWorker>(
+            1, TimeUnit.HOURS // Check every hour
+        ).build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            MedicationCheckWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            workRequest
+        )
+        android.util.Log.d("MedicationViewModel", "Setup periodic worker for midnight reset")
     }
 
     /**
@@ -88,6 +136,16 @@ class MedicationViewModel(
 
             // Schedule sync after delay (works offline too - will sync when online)
             scheduleSync()
+        }
+    }
+
+    /**
+     * Resets a medication's taken status (for testing)
+     */
+    fun resetMedicationTaken(medicationId: Int) {
+        viewModelScope.launch {
+            repository.resetMedicationTaken(medicationId)
+            // UI updates automatically via Flow
         }
     }
 
@@ -151,7 +209,7 @@ class MedicationViewModelFactory(private val context: Context) : ViewModelProvid
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MedicationViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return MedicationViewModel(MedicationRepository(context)) as T
+            return MedicationViewModel(MedicationRepository(context), context) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
