@@ -47,14 +47,33 @@ class MedicationRepository(
                 android.util.Log.d("MedicationRepository", "Fetching medications from server...")
                 val response = apiService.getMedications()
 
-                // Clear isDirty flag for server data (server is source of truth)
-                val cleanMedications = response.medications.map { it.copy(isDirty = false) }
+                // Get existing medications to preserve local state (isTaken, lastTakenTimestamp)
+                val existingMedications = medicationDao.getAllMedications()
+                val existingStateMap = existingMedications.associateBy { it.id }
 
-                // Save to local database
-                medicationDao.insertAll(cleanMedications)
-                android.util.Log.d("MedicationRepository", "Saved ${cleanMedications.size} medications to local database")
+                // Merge server data with local state
+                val mergedMedications = response.medications.map { serverMed ->
+                    val existingMed = existingStateMap[serverMed.id]
+                    if (existingMed != null) {
+                        // Preserve local state for existing medications
+                        serverMed.copy(
+                            isTaken = existingMed.isTaken,
+                            lastTakenTimestamp = existingMed.lastTakenTimestamp,
+                            isDirty = false
+                        )
+                    } else {
+                        // New medication from server
+                        serverMed.copy(isDirty = false)
+                    }
+                }
 
-                Result.success(cleanMedications)
+                // Delete all existing medications first, then insert merged ones
+                // This ensures medications removed from server are also removed locally
+                medicationDao.deleteAll()
+                medicationDao.insertAll(mergedMedications)
+                android.util.Log.d("MedicationRepository", "Replaced local database with ${mergedMedications.size} medications from server (preserved local state)")
+
+                Result.success(mergedMedications)
             } catch (e: Exception) {
                 android.util.Log.e("MedicationRepository", "Error fetching medications", e)
 
