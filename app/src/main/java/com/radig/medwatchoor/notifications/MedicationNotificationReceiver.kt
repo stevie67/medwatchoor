@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Vibrator
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -40,6 +41,10 @@ class MedicationNotificationReceiver : BroadcastReceiver() {
     ) {
         createNotificationChannel(context)
 
+        // Vibrate immediately when notification is shown
+        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
+        vibrator.vibrate(longArrayOf(0, 500, 200, 500, 200, 500), -1)
+
         // Intent to open the app when notification is tapped
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -55,11 +60,14 @@ class MedicationNotificationReceiver : BroadcastReceiver() {
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Time for $medicationName")
             .setContentText("Scheduled for $medicationTime")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
-            .setVibrate(longArrayOf(0, 300, 200, 300, 200, 300))
+            .setVibrate(longArrayOf(0, 500, 200, 500, 200, 500))
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setOngoing(false)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
 
         try {
@@ -77,11 +85,14 @@ class MedicationNotificationReceiver : BroadcastReceiver() {
         val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
             description = descriptionText
             enableVibration(true)
-            vibrationPattern = longArrayOf(0, 300, 200, 300, 200, 300)
+            vibrationPattern = longArrayOf(0, 500, 200, 500, 200, 500)
+            setShowBadge(true)
+            lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
         }
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
+        Log.d("MedicationNotification", "Created notification channel with vibration enabled")
     }
 
     private fun rescheduleMedication(context: Context, medicationId: Int) {
