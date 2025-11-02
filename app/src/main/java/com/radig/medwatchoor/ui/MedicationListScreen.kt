@@ -204,8 +204,8 @@ private fun MedicationItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Take at: ${medication.timeToTake}",
-                    style = MaterialTheme.typography.body2,
+                    text = medication.timeToTake,
+                    style = MaterialTheme.typography.caption2,
                     color = textColor
                 )
 
@@ -217,11 +217,19 @@ private fun MedicationItem(
                         fontWeight = FontWeight.Bold
                     )
                 } else {
-                    CompactButton(
-                        onClick = { onMedicationTaken(medication.id) }
-                    ) {
-                        Text(stringResource(R.string.confirm_taken))
-                    }
+                    Chip(
+                        onClick = { onMedicationTaken(medication.id) },
+                        label = {
+                            Text(
+                                text = stringResource(R.string.confirm_taken),
+                                style = MaterialTheme.typography.caption2,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        colors = ChipDefaults.primaryChipColors(),
+                        modifier = Modifier.height(32.dp)
+                    )
                 }
             }
 
